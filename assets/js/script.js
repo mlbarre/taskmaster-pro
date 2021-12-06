@@ -13,6 +13,7 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -31,6 +32,7 @@ var loadTasks = function() {
     };
   }
 
+
   // loop over object properties
   $.each(tasks, function(list, arr) { 
     // then loop over sub-array
@@ -38,6 +40,24 @@ var loadTasks = function() {
       createTask(task.text, task.date, list);
     });
   });
+};
+
+var auditTask = function(taskEl) {
+  // GET DATE FROM TASK ELEMENT 
+  var date = $(taskEl).find("span").text().trim();
+
+
+  // CONVERT TO MOMENT OBJECT AT 5:00PM
+  var time = moment(date, "L").set("hour", 17);
+
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  } else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+    
+  }
+
 };
 
 var saveTasks = function() {
@@ -95,31 +115,35 @@ $(".list-group").on("click", "span", function(){
 
   $(this).replaceWith(dateInput);
 
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // when calender is closed, force a "change" event on the "dateInput"
+      $(this).trigger("change");
+    }
+  });
+
   dateInput.trigger("focus");
 });
 
-$(".list-group").on("blur", "input[type='text']", function() {
-  var date = $(this)
-  .val()
-  .trim();
+$(".list-group").on("change", "input[type='text']", function() {
+  var date = $(this).val();
 
-  var status = $(this)
-  .closet(".list-group")
-  .attr("id")
-  .replace("list-", "");
+  var status = $(this).closest(".list-group").attr("id").replace("list-", "");
 
   var index = $(this)
-  .closet(".list-group-item")
-  .index();
+  .closest(".list-group-item").index();
 
   tasks[status][index].date = date;
   saveTasks();
 
-  var textSpan = $("<span>")
+  var taskSpan = $("<span>")
   .addClass("badge badge-primary badge-pill")
   .text(date);
 
   $(this).replaceWith(taskSpan);
+
+  auditTask($(taskSpan).closest("list-group-item"));
 
 });
 
@@ -184,6 +208,10 @@ $("#trash").droppable({
   }
 });
 
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
 // modal was triggered
 $("#task-form-modal").on("show.bs.modal", function() {
   // clear values
@@ -217,6 +245,8 @@ $("#task-form-modal .btn-primary").click(function() {
     saveTasks();
   }
 });
+
+
 
 // remove all tasks
 $("#remove-tasks").on("click", function() {
